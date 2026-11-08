@@ -1,0 +1,40 @@
+name: Redis build
+on: [push, pull_request]
+permissions:
+    contents: read
+jobs:
+    build:
+        name: PHP ${{ matrix.php-version }} / Valkey
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                php-version: ['8.4', '8.5']
+        services:
+            valkey:
+                image: valkey/valkey:9.0.7-alpine
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "valkey-cli ping"
+                    --health-interval 5s
+                    --health-timeout 3s
+                    --health-retries 10
+        env:
+            REDIS_TEST_HOST: 127.0.0.1
+            REDIS_TEST_PORT: 6379
+            REDIS_TEST_DATABASE: 15
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Set up PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php-version }}
+                  extensions: dom, mbstring, redis-6.3.0, xml, xmlwriter
+                  coverage: none
+                  tools: composer:v2
+            - name: Install dependencies
+              run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
+            - name: Run checks
+              run: composer build-all

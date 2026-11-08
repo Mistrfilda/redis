@@ -1,0 +1,79 @@
+{
+	"name": "mistrfilda/redis",
+	"description": "Redis and Valkey connections, distributed locks and native PHP sessions with optional Nette integration.",
+	"type": "library",
+	"license": "MIT",
+	"keywords": [
+		"redis",
+		"valkey",
+		"nette",
+		"cache",
+		"session",
+		"lock"
+	],
+	"require": {
+		"php": ">=8.4.1",
+		"ext-redis": "^6.3"
+	},
+	"require-dev": {
+		"nette/caching": "^3.4",
+		"nette/di": "^3.2.4",
+		"nette/http": "^3.4",
+		"nette/schema": "^1.3",
+		"php-parallel-lint/php-parallel-lint": "^1.4",
+		"phpstan/extension-installer": "^1.0",
+		"phpstan/phpstan": "^2.1",
+		"phpstan/phpstan-deprecation-rules": "^2.0",
+		"phpstan/phpstan-nette": "^2.0",
+		"phpstan/phpstan-phpunit": "^2.0",
+		"phpstan/phpstan-strict-rules": "^2.0",
+		"phpunit/phpunit": "^13.4",
+		"roave/security-advisories": "dev-master",
+		"slevomat/coding-standard": "^8.31",
+		"squizlabs/php_codesniffer": "^4.0"
+	},
+	"suggest": {
+		"nette/caching": "^3.4 for the Nette cache storage",
+		"nette/di": "^3.2.4 for the Nette DI extension",
+		"nette/http": "^3.4 for Nette sessions",
+		"nette/schema": "^1.3 for Nette configuration validation"
+	},
+	"autoload": {
+		"psr-4": {
+			"Mistrfilda\\Redis\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Mistrfilda\\Redis\\Tests\\": "tests/"
+		}
+	},
+	"scripts": {
+		"comload": "@composer dump-autoload -o --strict-psr",
+		"lint": "@php vendor/bin/parallel-lint --colors src/ tests/",
+		"stan": "@php vendor/bin/phpstan analyse -c phpstan.neon --ansi",
+		"cs": "@php vendor/bin/phpcs --standard=phpcs.xml src tests",
+		"cs-fix": "@php vendor/bin/phpcbf --standard=phpcs.xml src tests",
+		"test-unit": "@php vendor/bin/phpunit --testsuite unit --colors=always",
+		"test-integration": "@php vendor/bin/phpunit --testsuite integration --colors=always",
+		"build-all-local": [
+			"@comload",
+			"@build-all"
+		],
+		"build-all": [
+			"@composer validate --strict",
+			"@lint",
+			"@stan",
+			"@cs",
+			"@test-unit",
+			"@test-integration"
+		]
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"phpstan/extension-installer": true
+		},
+		"sort-packages": true
+	}
+}

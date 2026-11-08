@@ -1,0 +1,18 @@
+redis:
+	connections:
+		default:
+			host: %redisHost%
+			port: %redisPort%
+			database: %cacheDatabase%
+		sessions:
+			host: %redisHost%
+			port: %redisPort%
+			database: %sessionDatabase%
+	cache:
+		enabled: true
+	sessions:
+		enabled: true
+		connection: sessions
+		prefix: 'nette-session:'
+	locks:
+		enabled: true

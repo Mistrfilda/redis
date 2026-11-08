@@ -1,0 +1,7 @@
+parameters:
+	level: max
+	phpVersion: 80401
+	tmpDir: tmp/phpstan
+	paths:
+		- src
+		- tests
