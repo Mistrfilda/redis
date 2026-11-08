@@ -39,14 +39,51 @@ if ($mode === 'lock') {
 	exit(0);
 }
 
-if ($mode === 'session') {
-	new NativeSessionConfigurator(TestServer::config(), $prefix)->configure();
+if (in_array($mode, ['session', 'session-burst', 'session-timeout', 'session-closed'], true)) {
+	new NativeSessionConfigurator(
+		TestServer::config(),
+		$prefix,
+		lockRetries: $mode === 'session-timeout' ? 2 : 100,
+		lockWaitMicroseconds: $mode === 'session-timeout' ? 1000 : 20000,
+	)->configure();
 	ini_set('session.use_cookies', '0');
 	ini_set('session.use_strict_mode', '0');
 	ini_set('session.cache_limiter', '');
 	ini_set('session.serialize_handler', 'php_serialize');
 	ini_set('session.gc_maxlifetime', '120');
 	session_id($identifier);
+	if ($mode === 'session-burst') {
+		fwrite(STDOUT, "ready\n");
+		fflush(STDOUT);
+		fgets(STDIN);
+	}
+
+	if ($mode === 'session-timeout') {
+		$warnings = [];
+		set_error_handler(static function (int $severity, string $message) use (&$warnings): bool {
+			$warnings[] = $message;
+			return true;
+		});
+		try {
+			$opened = session_start();
+		} finally {
+			restore_error_handler();
+		}
+
+		if (
+			$opened
+			|| !array_any(
+				$warnings,
+				static fn (string $message): bool => str_contains($message, 'Failed to acquire session lock'),
+			)
+		) {
+			throw new RuntimeException('Expected a session lock acquisition timeout.');
+		}
+
+		echo "timed-out\n";
+		exit(0);
+	}
+
 	if (!session_start()) {
 		throw new RuntimeException('Worker could not open its session.');
 	}
@@ -57,6 +94,17 @@ if ($mode === 'session') {
 	}
 
 	$_SESSION['count'] = $count + 1;
+	if ($mode === 'session-burst' || $mode === 'session-closed') {
+		session_write_close();
+		echo "closed\n";
+		flush();
+		if ($mode === 'session-closed') {
+			fgets(STDIN);
+		}
+
+		exit(0);
+	}
+
 	echo "opened\n";
 	flush();
 	fgets(STDIN);

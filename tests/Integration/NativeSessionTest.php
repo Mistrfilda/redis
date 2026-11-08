@@ -81,6 +81,113 @@ final class NativeSessionTest extends RedisTestCase
 		self::assertSame('a:1:{s:5:"count";i:2;}', $this->redis->get('session:concurrent-session'));
 	}
 
+	public function testElevenConcurrentRequestsPreserveEverySessionUpdate(): void
+	{
+		$workers = [];
+		try {
+			for ($i = 0; $i < 11; $i++) {
+				$worker = new Worker(['session-burst', 'session:', 'concurrent-burst']);
+				$workers[] = $worker;
+				self::assertSame('ready', $worker->readLine());
+			}
+
+			foreach ($workers as $worker) {
+				$worker->proceed();
+			}
+
+			foreach ($workers as $worker) {
+				self::assertSame('closed', $worker->readLine());
+				self::assertSame(0, $worker->finish());
+			}
+
+			self::assertSame('a:1:{s:5:"count";i:11;}', $this->redis->get('session:concurrent-burst'));
+			self::assertSame(0, $this->redis->exists('session:concurrent-burst_LOCK'));
+		} finally {
+			foreach ($workers as $worker) {
+				$worker->kill();
+			}
+		}
+	}
+
+	public function testWaitTimeoutPreservesTheOwnersLockAndStoredSession(): void
+	{
+		$initialData = 'a:1:{s:5:"count";i:0;}';
+		$this->redis->set('session:timeout-session', $initialData);
+		$owner = new Worker(['session', 'session:', 'timeout-session']);
+		try {
+			self::assertSame('opened', $owner->readLine());
+			$lockOwner = $this->redis->get('session:timeout-session_LOCK');
+			self::assertIsString($lockOwner);
+
+			$waiting = new Worker(['session-timeout', 'session:', 'timeout-session']);
+			try {
+				self::assertSame('timed-out', $waiting->readLine());
+				self::assertSame(0, $waiting->finish());
+			} finally {
+				$waiting->kill();
+			}
+
+			self::assertSame($lockOwner, $this->redis->get('session:timeout-session_LOCK'));
+			self::assertGreaterThan(0, $this->redis->pttl('session:timeout-session_LOCK'));
+			self::assertSame($initialData, $this->redis->get('session:timeout-session'));
+
+			$owner->proceed();
+			self::assertSame(0, $owner->finish());
+			self::assertSame('a:1:{s:5:"count";i:1;}', $this->redis->get('session:timeout-session'));
+			self::assertSame(0, $this->redis->exists('session:timeout-session_LOCK'));
+		} finally {
+			$owner->kill();
+		}
+	}
+
+	public function testDifferentSessionsDoNotBlockEachOther(): void
+	{
+		$first = new Worker(['session', 'session:', 'first-session']);
+		$second = new Worker(['session', 'session:', 'second-session']);
+		try {
+			self::assertSame('opened', $first->readLine());
+			self::assertSame('opened', $second->readLine());
+			self::assertSame(1, $this->redis->exists('session:first-session_LOCK'));
+			self::assertSame(1, $this->redis->exists('session:second-session_LOCK'));
+
+			$first->proceed();
+			$second->proceed();
+			self::assertSame(0, $first->finish());
+			self::assertSame(0, $second->finish());
+			self::assertSame('a:1:{s:5:"count";i:1;}', $this->redis->get('session:first-session'));
+			self::assertSame('a:1:{s:5:"count";i:1;}', $this->redis->get('session:second-session'));
+		} finally {
+			$first->kill();
+			$second->kill();
+		}
+	}
+
+	public function testClosingSessionReleasesItsLockBeforeTheRequestFinishes(): void
+	{
+		$first = new Worker(['session-closed', 'session:', 'closed-session']);
+		try {
+			self::assertSame('closed', $first->readLine());
+			self::assertSame('a:1:{s:5:"count";i:1;}', $this->redis->get('session:closed-session'));
+			self::assertSame(0, $this->redis->exists('session:closed-session_LOCK'));
+
+			$second = new Worker(['session', 'session:', 'closed-session']);
+			try {
+				self::assertSame('opened', $second->readLine());
+				$second->proceed();
+				self::assertSame(0, $second->finish());
+			} finally {
+				$second->kill();
+			}
+
+			self::assertSame('a:1:{s:5:"count";i:2;}', $this->redis->get('session:closed-session'));
+			$first->proceed();
+			self::assertSame(0, $first->finish());
+			self::assertSame('a:1:{s:5:"count";i:2;}', $this->redis->get('session:closed-session'));
+		} finally {
+			$first->kill();
+		}
+	}
+
 	private function configureSession(): void
 	{
 		new NativeSessionConfigurator(TestServer::config(), 'session:')->configure();
