@@ -181,11 +181,18 @@ The extension registers:
 | --- | --- |
 | `redis.connections.<name>.client` | Native `Redis` client; only `defaultConnection` is autowired |
 | `redis.cache` | Autowired `Nette\Caching\Storage`, when enabled |
+| `redis.cacheGc` | `redis:cache:gc` command, when cache and `cache.registerGcCommand` are enabled |
 | `redis.locks` | Autowired `LockManager`, when enabled |
 
 Clients connect when their services are first requested, not during DI
 compilation. Enabling the cache disables autowiring of the previous cache
-storage. Enabling sessions configures the existing `Nette\Http\Session`
+storage. Optional `cache.registerGcCommand: true` registers the cache cleanup
+command with the application's console integration and requires Symfony Console.
+It defaults to `false`; remove any manual command definition when opting in.
+Disabling cache also disables this registration, including in CI overrides.
+See [cache maintenance](cache-maintenance.md) for scheduling and migration details.
+
+Enabling sessions configures the existing `Nette\Http\Session`
 service and its native Redis handler. Keep using Nette session sections and
 `session.expiration` as usual; do not configure another session handler at the
 same time.

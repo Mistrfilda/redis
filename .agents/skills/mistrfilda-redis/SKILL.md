@@ -189,6 +189,7 @@ With an extension named `redis`, the service names are:
 | --- | --- |
 | `redis.connections.<name>.client` | Native `Redis`; only `defaultConnection` is autowired |
 | `redis.cache` | Autowired `Nette\Caching\Storage` when enabled |
+| `redis.cacheGc` | `redis:cache:gc` command when cache and `cache.registerGcCommand` are enabled |
 | `redis.locks` | Autowired `Mistrfilda\Redis\Lock\LockManager` when enabled |
 
 Clients connect when requested, not during DI compilation. Enabling cache
@@ -239,12 +240,24 @@ periodic garbage collection. A shared tag cannot inherit one member's TTL, since
 that would break invalidation for members with a longer lifetime.
 
 With Symfony Console installed and an existing Nette/Contributte Console setup,
-register the command as an application service:
+enable command registration in the Redis extension:
 
 ```neon
-services:
-	redisGc: Mistrfilda\Redis\Bridges\Symfony\Console\CacheGarbageCollectCommand(@redis.cache)
+redis:
+	cache:
+		enabled: true
+		registerGcCommand: true
 ```
+
+`registerGcCommand` defaults to `false` to preserve existing manual registrations.
+When opting in, remove the application's manual command service and any CI override
+that removes it. The extension registers `redis.cacheGc` only when both cache and
+command registration are enabled, so a CI override with `cache.enabled: false`
+needs no command-service override. Other enabled Redis features still need their
+own configuration. Discovery works regardless of the order of Redis and console
+extensions. Explicitly enabling the command without Symfony Console installed
+fails compilation with an installation hint; Symfony Console otherwise remains
+optional. DI compilation never connects to Redis.
 
 For a standalone Symfony Console application, inject the configured storage:
 

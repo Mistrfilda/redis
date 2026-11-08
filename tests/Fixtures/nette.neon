@@ -10,12 +10,10 @@ redis:
 			database: %sessionDatabase%
 	cache:
 		enabled: true
+		registerGcCommand: true
 	sessions:
 		enabled: true
 		connection: sessions
 		prefix: 'nette-session:'
 	locks:
 		enabled: true
-
-services:
-	redisGc: Mistrfilda\Redis\Bridges\Symfony\Console\CacheGarbageCollectCommand(@redis.cache)

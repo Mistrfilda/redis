@@ -6,6 +6,7 @@ namespace Mistrfilda\Redis\Bridges\Nette\DI;
 
 use LogicException;
 use Mistrfilda\Redis\Bridges\Nette\Caching\RedisStorage;
+use Mistrfilda\Redis\Bridges\Symfony\Console\CacheGarbageCollectCommand;
 use Mistrfilda\Redis\Connection\ConnectionConfig;
 use Mistrfilda\Redis\Connection\ConnectionFactory;
 use Mistrfilda\Redis\Lock\LockManager;
@@ -19,6 +20,7 @@ use Nette\Http\Session;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Redis;
+use Symfony\Component\Console\Command\Command;
 
 /**
  * @phpstan-type ConnectionOptions array{
@@ -29,7 +31,9 @@ use Redis;
  * @property-read object{
  *     connections: array<string, ConnectionOptions>,
  *     defaultConnection: string,
- *     cache: object{enabled: bool, connection: string, prefix: string, serializer: string|null},
+ *     cache: object{
+ *         enabled: bool, connection: string, prefix: string, serializer: string|null, registerGcCommand: bool
+ *     },
  *     sessions: object{
  *         enabled: bool, connection: string, prefix: string, locking: bool,
  *         lockTtl: int, lockRetries: int, lockWaitMicroseconds: int
@@ -59,6 +63,7 @@ final class RedisExtension extends CompilerExtension
 				'connection' => Expect::string('default'),
 				'prefix' => Expect::string('mistrfilda:cache:')->min(1),
 				'serializer' => Expect::string()->nullable(),
+				'registerGcCommand' => Expect::bool(false),
 			]),
 			'sessions' => Expect::structure([
 				'enabled' => Expect::bool(false),
@@ -100,6 +105,23 @@ final class RedisExtension extends CompilerExtension
 				->setAutowired($name === $config->defaultConnection);
 		}
 
+		if ($config->cache->enabled) {
+			if (!interface_exists(Storage::class)) {
+				throw new LogicException('Install nette/caching to enable Redis cache storage.');
+			}
+
+			if ($config->cache->registerGcCommand) {
+				if (!class_exists(Command::class)) {
+					throw new LogicException(
+						'Install symfony/console to register the Redis cache garbage collection command.',
+					);
+				}
+
+				$builder->addDefinition($this->prefix('cacheGc'))
+					->setFactory(CacheGarbageCollectCommand::class, [new Reference($this->prefix('cache'))]);
+			}
+		}
+
 		if ($config->locks->enabled) {
 			$builder->addDefinition($this->prefix('locks'))
 				->setFactory(LockManager::class, [
@@ -115,10 +137,6 @@ final class RedisExtension extends CompilerExtension
 		$config = $this->config;
 
 		if ($config->cache->enabled) {
-			if (!interface_exists(Storage::class)) {
-				throw new LogicException('Install nette/caching to enable Redis cache storage.');
-			}
-
 			$previous = $builder->getByType(Storage::class);
 			if ($previous !== null) {
 				$builder->getDefinition($previous)->setAutowired(false);

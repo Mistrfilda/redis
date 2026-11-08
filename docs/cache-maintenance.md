@@ -8,18 +8,34 @@ storage prefix you use. It covers all Nette namespaces within that storage.
 
 The optional command requires `symfony/console:^8.0` and `nette/caching:^3.4`.
 The library does not provide an application bootstrap or a `bin/console` executable;
-register the command with your existing console application.
+use the host application's existing console integration.
 
-With Nette and Contributte Console, enable `redis.cache` and register the service:
+With Nette and Contributte Console, let `RedisExtension` register the command:
 
 ```neon
-services:
-	redisGc: Mistrfilda\Redis\Bridges\Symfony\Console\CacheGarbageCollectCommand(@redis.cache)
+redis:
+	cache:
+		enabled: true
+		registerGcCommand: true
 ```
 
-The service reference assumes the extension is named `redis`. Command discovery
-is handled by the application's console integration. For another Symfony Console
-application, inject your configured `RedisStorage` directly:
+`registerGcCommand` defaults to `false` for compatibility with applications that
+already register the command manually. When opting in, remove that manual service
+definition. With an extension named `redis`, the new service is `redis.cacheGc`
+and uses `redis.cache`. It is available to console discovery regardless of the
+order of the Redis and console extensions.
+
+Both `cache.enabled` and `cache.registerGcCommand` must be `true`. When cache is
+disabled, no command service or reference to the cache service is registered.
+For CI, override only the features that need Redis, such as `cache.enabled: false`;
+no `services.redisGc` removal is needed after migrating to extension registration.
+Other enabled Redis features still require Redis when their services are used.
+
+Symfony Console remains optional. If command registration and cache are enabled
+without Symfony Console installed, compilation fails with an installation hint.
+Compilation itself never connects to Redis.
+
+For another Symfony Console application, inject your configured `RedisStorage` directly:
 
 ```php
 use Mistrfilda\Redis\Bridges\Symfony\Console\CacheGarbageCollectCommand;

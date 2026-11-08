@@ -82,13 +82,18 @@ For the optional console command, install Symfony Console:
 composer require symfony/console:^8.0
 ```
 
-Register the command with your application's existing console integration.
-For Nette with Contributte Console:
+For Nette with Contributte Console, enable registration in the Redis extension:
 
 ```neon
-services:
-	redisGc: Mistrfilda\Redis\Bridges\Symfony\Console\CacheGarbageCollectCommand(@redis.cache)
+redis:
+	cache:
+		enabled: true
+		registerGcCommand: true
 ```
+
+The command is registered only while cache is enabled. A CI override with
+`redis.cache.enabled: false` also omits the command. Registration defaults to
+`false`; remove an existing manual command service when opting in.
 
 ```sh
 php bin/console redis:cache:gc --no-interaction
