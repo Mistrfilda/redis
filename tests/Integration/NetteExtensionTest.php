@@ -6,6 +6,7 @@ namespace Mistrfilda\Redis\Tests\Integration;
 
 use Mistrfilda\Redis\Bridges\Nette\Caching\RedisStorage;
 use Mistrfilda\Redis\Bridges\Nette\DI\RedisExtension;
+use Mistrfilda\Redis\Bridges\Symfony\Console\CacheGarbageCollectCommand;
 use Mistrfilda\Redis\Tests\Fixtures\RedisTestCase;
 use Mistrfilda\Redis\Tests\Fixtures\TestServer;
 use Nette\Caching\Cache;
@@ -21,6 +22,8 @@ use Nette\Http\UrlScript;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Redis;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Tester\CommandTester;
 
 #[RunTestsInSeparateProcesses]
 #[PreserveGlobalState(false)]
@@ -64,6 +67,10 @@ final class NetteExtensionTest extends RedisTestCase
 			self::assertInstanceOf(RedisStorage::class, $storage);
 			$cache = new Cache($storage);
 			$cache->save('example', 'cached');
+			self::assertSame('cached', $cache->load('example'));
+			$command = $container->getByType(CacheGarbageCollectCommand::class);
+			$tester = new CommandTester($command);
+			self::assertSame(Command::SUCCESS, $tester->execute([]));
 			self::assertSame('cached', $cache->load('example'));
 			$sessionsClient = $container->getService('redis.connections.sessions.client');
 			self::assertInstanceOf(Redis::class, $sessionsClient);

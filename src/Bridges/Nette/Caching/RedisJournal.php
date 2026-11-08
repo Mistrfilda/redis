@@ -57,7 +57,7 @@ LUA;
 		string|null $requiredTag = null,
 		int|null $maximumPriority = null,
 		bool $onlyExpired = false,
-	): void
+	): bool
 	{
 		$script = <<<'LUA'
 if ARGV[1] == '1' and redis.call('GET', KEYS[1]) ~= ARGV[2] then return 0 end
@@ -70,12 +70,13 @@ if ARGV[5] == '1' and redis.call('EXISTS', KEYS[1]) == 1 then return 0 end
 for _, tag in ipairs(redis.call('SMEMBERS', KEYS[2])) do
 	redis.call('SREM', tag, KEYS[1])
 end
-redis.call('SREM', KEYS[3], KEYS[1])
-redis.call('ZREM', KEYS[4], KEYS[1])
-redis.call('DEL', KEYS[1], KEYS[2])
-return 1
+local indexed = redis.call('SREM', KEYS[3], KEYS[1])
+local prioritized = redis.call('ZREM', KEYS[4], KEYS[1])
+local deleted = redis.call('DEL', KEYS[1], KEYS[2])
+if indexed > 0 or prioritized > 0 or deleted > 0 then return 1 end
+return 0
 LUA;
-		$this->redis->eval($script, [
+		$result = $this->redis->eval($script, [
 			...$this->keys($key),
 			$expectedPayload === null ? '0' : '1',
 			$expectedPayload ?? '',
@@ -83,6 +84,11 @@ LUA;
 			$maximumPriority === null ? '' : (string) $maximumPriority,
 			$onlyExpired ? '1' : '0',
 		], 4);
+		if ($result !== 0 && $result !== 1) {
+			throw new UnexpectedValueException('Redis cache journal removal returned an invalid result.');
+		}
+
+		return $result === 1;
 	}
 
 	public function cleanTag(string $tag): void
@@ -103,17 +109,25 @@ LUA;
 		}
 	}
 
-	public function collectGarbage(): void
+	public function collectGarbage(): GarbageCollectionResult
 	{
+		$started = hrtime(true);
+		$checked = 0;
+		$removed = 0;
 		$cursor = null;
 		do {
 			$keys = $this->redis->sscan($this->prefix . 'entries', $cursor, count: 100);
 			if ($keys !== false) {
 				foreach ($keys as $key) {
-					$this->remove($key, onlyExpired: true);
+					$checked++;
+					if ($this->remove($key, onlyExpired: true)) {
+						$removed++;
+					}
 				}
 			}
 		} while ($cursor !== 0);
+
+		return new GarbageCollectionResult($checked, $removed, (hrtime(true) - $started) / 1000000000);
 	}
 
 	/** @return list<string> */

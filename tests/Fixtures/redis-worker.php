@@ -2,15 +2,29 @@
 
 declare(strict_types = 1);
 
+use Mistrfilda\Redis\Bridges\Nette\Caching\RedisStorage;
 use Mistrfilda\Redis\Lock\LockManager;
 use Mistrfilda\Redis\Session\NativeSessionConfigurator;
+use Mistrfilda\Redis\Tests\Fixtures\CachedProfile;
 use Mistrfilda\Redis\Tests\Fixtures\TestServer;
+use Nette\Caching\Cache;
 
 require __DIR__ . '/../../vendor/autoload.php';
 
 $mode = $argv[1] ?? '';
 $prefix = $argv[2] ?? '';
 $identifier = $argv[3] ?? '';
+
+if ($mode === 'cache-object') {
+	$cache = new Cache(new RedisStorage(TestServer::connect(), $prefix));
+	$value = $cache->load($identifier);
+	if (!$value instanceof CachedProfile) {
+		throw new RuntimeException('Worker did not restore the cached object.');
+	}
+
+	echo $value->name . ':' . $value->getVersion() . "\n";
+	exit(0);
+}
 
 if ($mode === 'lock') {
 	$lock = new LockManager(TestServer::connect(), $prefix)->acquire($identifier, (int) ($argv[4] ?? '30000'));

@@ -30,13 +30,15 @@
 		"phpunit/phpunit": "^13.4",
 		"roave/security-advisories": "dev-master",
 		"slevomat/coding-standard": "^8.31",
-		"squizlabs/php_codesniffer": "^4.0"
+		"squizlabs/php_codesniffer": "^4.0",
+		"symfony/console": "^8.0"
 	},
 	"suggest": {
 		"nette/caching": "^3.4 for the Nette cache storage",
 		"nette/di": "^3.2.4 for the Nette DI extension",
 		"nette/http": "^3.4 for Nette sessions",
-		"nette/schema": "^1.3 for Nette configuration validation"
+		"nette/schema": "^1.3 for Nette configuration validation",
+		"symfony/console": "^8.0 for the optional cache garbage collection command"
 	},
 	"autoload": {
 		"psr-4": {

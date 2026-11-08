@@ -122,8 +122,13 @@ final readonly class RedisStorage implements Storage
 		}
 
 		if ($conditions === []) {
-			$this->journal->collectGarbage();
+			$this->collectGarbage();
 		}
+	}
+
+	public function collectGarbage(): GarbageCollectionResult
+	{
+		return $this->journal->collectGarbage();
 	}
 
 	/** @param array<string, string> $visited */
