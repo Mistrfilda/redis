@@ -11,11 +11,11 @@ jobs:
             matrix:
                 include:
                     - php-version: '8.4'
-                      redis-extension: redis-6.3.0
+                      redis-version: '6.3.0'
                     - php-version: '8.5'
-                      redis-extension: redis-6.3.0
+                      redis-version: '6.3.0'
                     - php-version: '8.6'
-                      redis-extension: redis-phpredis/phpredis@6.4.0RC1
+                      redis-version: '6.4.0RC1'
         services:
             valkey:
                 image: valkey/valkey:9.0.7-alpine
@@ -37,9 +37,11 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php-version }}
-                  extensions: dom, mbstring, xml, xmlwriter, ${{ matrix.redis-extension }}
+                  extensions: dom, mbstring, xml, xmlwriter
                   coverage: none
-                  tools: composer:v2
+                  tools: composer:v2, phpize, pie:1.5.5
+            - name: Install PhpRedis
+              run: sudo -n pie install --no-interaction phpredis/phpredis:${{ matrix.redis-version }}
             - name: Install dependencies
               run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
             - name: Run checks
