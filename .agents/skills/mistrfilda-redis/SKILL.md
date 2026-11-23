@@ -13,8 +13,9 @@ only change the application or infrastructure when the task includes that work.
 ## Dependencies and scope
 
 - Package: `mistrfilda/redis`; namespace: `Mistrfilda\Redis`.
-- Core requirements: PHP 8.4.1+ and native `ext-redis` 6.3+ within 6.x. Do not
-  introduce Predis. Connections, locks and native sessions need no framework.
+- Core requirements: PHP 8.4.1+ and native `ext-redis` 6.3+ within 6.x. On PHP
+  8.6, use PhpRedis 6.4.0RC1 or later within 6.x. Do not introduce Predis.
+  Connections, locks and native sessions need no framework.
 - Nette DI bridge: `nette/di:^3.2.4` and `nette/schema:^1.3`.
 - Nette cache storage: `nette/caching:^3.4`. Nette sessions: `nette/http:^3.4`.
 - Optional cleanup command: `symfony/console:^8.0` and `nette/caching:^3.4`.

@@ -1,6 +1,6 @@
 # Development
 
-The package targets PHP 8.4.1+ and PhpRedis 6.3.x. Runtime dependencies are PHP and
+The package targets PHP 8.4.1+ and PhpRedis 6.3+ within 6.x. Runtime dependencies are PHP and
 `ext-redis`; Nette and Symfony Console are optional bridges and development
 dependencies. Keep core connections, locks and sessions usable without them.
 
@@ -35,7 +35,8 @@ docker stop redis-library-valkey
 ```
 
 `build-all` runs Composer validation, PHP syntax checks, PHPStan, PHPCS, unit tests
-and integration tests. CI runs PHP 8.4 and 8.5 against a disposable Valkey service.
+and integration tests. CI runs PHP 8.4 and 8.5 with PhpRedis 6.3.0, and PHP 8.6
+with PhpRedis 6.4.0RC1. Each job uses a disposable Valkey service.
 The implementation is also exercised locally against Redis 8.x.
 
 Tests are grouped by behavior:

@@ -9,7 +9,13 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                php-version: ['8.4', '8.5']
+                include:
+                    - php-version: '8.4'
+                      redis-extension: redis-6.3.0
+                    - php-version: '8.5'
+                      redis-extension: redis-6.3.0
+                    - php-version: '8.6'
+                      redis-extension: redis-phpredis/phpredis@6.4.0RC1
         services:
             valkey:
                 image: valkey/valkey:9.0.7-alpine
@@ -31,7 +37,7 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php-version }}
-                  extensions: dom, mbstring, redis-6.3.0, xml, xmlwriter
+                  extensions: dom, mbstring, xml, xmlwriter, ${{ matrix.redis-extension }}
                   coverage: none
                   tools: composer:v2
             - name: Install dependencies

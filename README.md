@@ -7,6 +7,7 @@ Redis and Valkey connections, distributed locks and native PHP sessions using
 
 Requires PHP 8.4.1+, PhpRedis 6.3+ within 6.x, and a standalone Redis or Valkey
 server with Lua scripting. The core has no framework dependencies.
+On PHP 8.6, use PhpRedis 6.4.0RC1 or later within 6.x.
 
 ```sh
 composer require mistrfilda/redis
